@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient, User as PrismaUser } from '@prisma/client';
+import { User as PrismaUser, Prisma } from '@prisma/client';
 import { Result } from '../../common/utils/result';
 import { UserRepositoryErrorCode } from '../../common/enums/error-codes.enum';
+import { PrismaService } from '../../prisma/prisma.service';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -13,11 +14,7 @@ export interface UserRepositoryError {
 
 @Injectable()
 export class UserRepository {
-  private prisma: PrismaClient;
-
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   private mapPrismaUserToEntity(prismaUser: PrismaUser): User {
     return {
@@ -29,9 +26,37 @@ export class UserRepository {
     };
   }
 
-  async create(data: CreateUserDto): Promise<Result<User, UserRepositoryError>> {
+  async create(
+    data: CreateUserDto,
+  ): Promise<Result<User, UserRepositoryError>> {
     try {
       const user = await this.prisma.user.create({
+        data: {
+          email: data.email,
+          name: data.name,
+        },
+      });
+      return Result.success(this.mapPrismaUserToEntity(user));
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        return Result.failure({
+          code: UserRepositoryErrorCode.DUPLICATE_EMAIL,
+          message: 'A user with this email already exists',
+        });
+      }
+      return Result.failure({
+        code: UserRepositoryErrorCode.DATABASE_ERROR,
+        message: error.message || 'Database operation failed',
+      });
+    }
+  }
+
+  async createWithinTransaction(
+    data: CreateUserDto,
+    tx: Prisma.TransactionClient,
+  ): Promise<Result<User, UserRepositoryError>> {
+    try {
+      const user = await tx.user.create({
         data: {
           email: data.email,
           name: data.name,
@@ -71,14 +96,14 @@ export class UserRepository {
       const user = await this.prisma.user.findUnique({
         where: { id },
       });
-      
+
       if (!user) {
         return Result.failure({
           code: UserRepositoryErrorCode.NOT_FOUND,
           message: `User with id ${id} not found`,
         });
       }
-      
+
       return Result.success(this.mapPrismaUserToEntity(user));
     } catch (error: any) {
       return Result.failure({
@@ -93,14 +118,14 @@ export class UserRepository {
       const user = await this.prisma.user.findUnique({
         where: { email },
       });
-      
+
       if (!user) {
         return Result.failure({
           code: UserRepositoryErrorCode.NOT_FOUND,
           message: `User with email ${email} not found`,
         });
       }
-      
+
       return Result.success(this.mapPrismaUserToEntity(user));
     } catch (error: any) {
       return Result.failure({
@@ -116,6 +141,40 @@ export class UserRepository {
   ): Promise<Result<User, UserRepositoryError>> {
     try {
       const user = await this.prisma.user.update({
+        where: { id },
+        data: {
+          ...(data.email && { email: data.email }),
+          ...(data.name && { name: data.name }),
+        },
+      });
+      return Result.success(this.mapPrismaUserToEntity(user));
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        return Result.failure({
+          code: UserRepositoryErrorCode.NOT_FOUND,
+          message: `User with id ${id} not found`,
+        });
+      }
+      if (error.code === 'P2002') {
+        return Result.failure({
+          code: UserRepositoryErrorCode.DUPLICATE_EMAIL,
+          message: 'A user with this email already exists',
+        });
+      }
+      return Result.failure({
+        code: UserRepositoryErrorCode.DATABASE_ERROR,
+        message: error.message || 'Database operation failed',
+      });
+    }
+  }
+
+  async updateWithinTransaction(
+    id: string,
+    data: UpdateUserDto,
+    tx: Prisma.TransactionClient,
+  ): Promise<Result<User, UserRepositoryError>> {
+    try {
+      const user = await tx.user.update({
         where: { id },
         data: {
           ...(data.email && { email: data.email }),

@@ -1,9 +1,12 @@
 import { Result } from '../../common/utils/result';
 import { UserServiceErrorType } from '../../common/enums/error-codes.enum';
+import { PrismaService } from '../../prisma/prisma.service';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { CreateUserWithAuditDto } from '../dto/create-user-with-audit.dto';
 import { UserRepository } from '../repositories/user.repository';
+import { AuditLogRepository } from '../../audit/repositories/audit-log.repository';
 export interface UserServiceError {
     type: UserServiceErrorType;
     message: string;
@@ -11,7 +14,9 @@ export interface UserServiceError {
 }
 export declare class UserService {
     private readonly userRepository;
-    constructor(userRepository: UserRepository);
+    private readonly auditLogRepository;
+    private readonly prisma;
+    constructor(userRepository: UserRepository, auditLogRepository: AuditLogRepository, prisma: PrismaService);
     private mapRepositoryError;
     createUser(dto: CreateUserDto): Promise<Result<User, UserServiceError>>;
     findAllUsers(): Promise<Result<User[], UserServiceError>>;
@@ -21,4 +26,8 @@ export declare class UserService {
     processUsers<T>(processor: (users: User[]) => T): Promise<Result<T, UserServiceError>>;
     findUsersBy(predicate: (user: User) => boolean): Promise<Result<User[], UserServiceError>>;
     countUsers(): Promise<Result<number, UserServiceError>>;
+    createUserWithAudit(dto: CreateUserWithAuditDto): Promise<Result<User, UserServiceError>>;
+    updateUserWithAudit(id: string, dto: UpdateUserDto & {
+        performedBy: string;
+    }): Promise<Result<User, UserServiceError>>;
 }

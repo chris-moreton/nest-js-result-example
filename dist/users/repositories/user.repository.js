@@ -11,12 +11,12 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserRepository = void 0;
 const common_1 = require("@nestjs/common");
-const client_1 = require("@prisma/client");
 const result_1 = require("../../common/utils/result");
 const error_codes_enum_1 = require("../../common/enums/error-codes.enum");
+const prisma_service_1 = require("../../prisma/prisma.service");
 let UserRepository = class UserRepository {
-    constructor() {
-        this.prisma = new client_1.PrismaClient();
+    constructor(prisma) {
+        this.prisma = prisma;
     }
     mapPrismaUserToEntity(prismaUser) {
         return {
@@ -30,6 +30,29 @@ let UserRepository = class UserRepository {
     async create(data) {
         try {
             const user = await this.prisma.user.create({
+                data: {
+                    email: data.email,
+                    name: data.name,
+                },
+            });
+            return result_1.Result.success(this.mapPrismaUserToEntity(user));
+        }
+        catch (error) {
+            if (error.code === 'P2002') {
+                return result_1.Result.failure({
+                    code: error_codes_enum_1.UserRepositoryErrorCode.DUPLICATE_EMAIL,
+                    message: 'A user with this email already exists',
+                });
+            }
+            return result_1.Result.failure({
+                code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
+                message: error.message || 'Database operation failed',
+            });
+        }
+    }
+    async createWithinTransaction(data, tx) {
+        try {
+            const user = await tx.user.create({
                 data: {
                     email: data.email,
                     name: data.name,
@@ -134,6 +157,36 @@ let UserRepository = class UserRepository {
             });
         }
     }
+    async updateWithinTransaction(id, data, tx) {
+        try {
+            const user = await tx.user.update({
+                where: { id },
+                data: {
+                    ...(data.email && { email: data.email }),
+                    ...(data.name && { name: data.name }),
+                },
+            });
+            return result_1.Result.success(this.mapPrismaUserToEntity(user));
+        }
+        catch (error) {
+            if (error.code === 'P2025') {
+                return result_1.Result.failure({
+                    code: error_codes_enum_1.UserRepositoryErrorCode.NOT_FOUND,
+                    message: `User with id ${id} not found`,
+                });
+            }
+            if (error.code === 'P2002') {
+                return result_1.Result.failure({
+                    code: error_codes_enum_1.UserRepositoryErrorCode.DUPLICATE_EMAIL,
+                    message: 'A user with this email already exists',
+                });
+            }
+            return result_1.Result.failure({
+                code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
+                message: error.message || 'Database operation failed',
+            });
+        }
+    }
     async delete(id) {
         try {
             const user = await this.prisma.user.delete({
@@ -172,6 +225,6 @@ let UserRepository = class UserRepository {
 exports.UserRepository = UserRepository;
 exports.UserRepository = UserRepository = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], UserRepository);
 //# sourceMappingURL=user.repository.js.map

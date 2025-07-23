@@ -15,6 +15,7 @@ import { UserService, UserServiceError } from '../services/user.service';
 import { UserServiceErrorType } from '../../common/enums/error-codes.enum';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { CreateUserWithAuditDto } from '../dto/create-user-with-audit.dto';
 import { Result } from '../../common/utils/result';
 import { User } from '../entities/user.entity';
 
@@ -106,6 +107,28 @@ export class UserController {
           !user.email.toLowerCase().includes(filter.email.toLowerCase())
         );
       }),
+    );
+  }
+
+  // Transactional endpoints with audit logging
+  @Post('with-audit')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async createWithAudit(
+    @Body() createUserDto: CreateUserWithAuditDto,
+  ): Promise<User> {
+    return this.handleResult(
+      this.userService.createUserWithAudit(createUserDto),
+    );
+  }
+
+  @Patch(':id/with-audit')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async updateWithAudit(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateUserDto & { performedBy: string },
+  ): Promise<User> {
+    return this.handleResult(
+      this.userService.updateUserWithAudit(id, updateDto),
     );
   }
 }

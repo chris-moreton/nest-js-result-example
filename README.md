@@ -56,6 +56,22 @@ const processUser = pipe(
 ### 3. Immutable Data
 Services and repositories work with immutable data structures, returning new objects rather than mutating existing ones.
 
+### 4. Prisma Transactions
+Demonstrates proper transaction handling for operations requiring atomicity:
+
+```typescript
+const result = await this.prisma.$transaction(async (tx) => {
+  // Create user
+  const userResult = await this.userRepository.createWithinTransaction(dto, tx);
+  
+  // Create audit log in same transaction
+  const auditResult = await this.auditLogRepository.createWithinTransaction(auditData, tx);
+  
+  // Both succeed or both fail
+  return user;
+});
+```
+
 ## Installation
 
 ```bash
@@ -75,13 +91,20 @@ yarn start:prod
 
 ## API Endpoints
 
+### Basic CRUD Operations
 - `POST /users` - Create a new user
 - `GET /users` - Get all users
 - `GET /users/:id` - Get user by ID
 - `PATCH /users/:id` - Update user
 - `DELETE /users/:id` - Delete user
+
+### Functional Endpoints
 - `GET /users/search/count` - Get user count
 - `POST /users/search/filter` - Filter users by criteria
+
+### Transactional Endpoints with Audit Logging
+- `POST /users/with-audit` - Create user with audit log (transaction)
+- `PATCH /users/:id/with-audit` - Update user with audit log (transaction)
 
 ## Database
 

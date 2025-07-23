@@ -1,13 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { Result } from '../../common/utils/result';
-import { UserRepositoryErrorCode, UserServiceErrorType } from '../../common/enums/error-codes.enum';
+import {
+  UserRepositoryErrorCode,
+  UserServiceErrorType,
+} from '../../common/enums/error-codes.enum';
+import { AuditAction } from '../../common/enums/audit-action.enum';
+import { PrismaService } from '../../prisma/prisma.service';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { CreateUserWithAuditDto } from '../dto/create-user-with-audit.dto';
 import {
   UserRepository,
   UserRepositoryError,
 } from '../repositories/user.repository';
+import { AuditLogRepository } from '../../audit/repositories/audit-log.repository';
 
 export interface UserServiceError {
   type: UserServiceErrorType;
@@ -17,7 +24,11 @@ export interface UserServiceError {
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly auditLogRepository: AuditLogRepository,
+    private readonly prisma: PrismaService,
+  ) {}
 
   private mapRepositoryError(error: UserRepositoryError): UserServiceError {
     switch (error.code) {
@@ -170,5 +181,153 @@ export class UserService {
   async countUsers(): Promise<Result<number, UserServiceError>> {
     const usersResult = await this.findAllUsers();
     return Result.map(usersResult, (users) => users.length);
+  }
+
+  // Transactional method with audit logging
+  async createUserWithAudit(
+    dto: CreateUserWithAuditDto,
+  ): Promise<Result<User, UserServiceError>> {
+    // Validation
+    if (dto.email.length > 255) {
+      return Result.failure({
+        type: UserServiceErrorType.VALIDATION_ERROR,
+        message: 'Email is too long (max 255 characters)',
+      });
+    }
+
+    if (dto.name.trim().length === 0) {
+      return Result.failure({
+        type: UserServiceErrorType.VALIDATION_ERROR,
+        message: 'Name cannot be empty',
+      });
+    }
+
+    // Use Prisma transaction
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Create user within transaction
+        const userResult = await this.userRepository.createWithinTransaction(
+          {
+            email: dto.email,
+            name: dto.name,
+          },
+          tx,
+        );
+
+        if (Result.isFailure(userResult)) {
+          throw userResult.error;
+        }
+
+        const user = userResult.value;
+
+        // Create audit log within same transaction
+        const auditResult =
+          await this.auditLogRepository.createWithinTransaction(
+            {
+              userId: user.id,
+              action: AuditAction.CREATE,
+              details: {
+                email: user.email,
+                name: user.name,
+              },
+              performedBy: dto.performedBy,
+            },
+            tx,
+          );
+
+        if (Result.isFailure(auditResult)) {
+          throw new Error('Failed to create audit log');
+        }
+
+        return user;
+      });
+
+      return Result.success(result);
+    } catch (error: any) {
+      if (error.code) {
+        return Result.failure(this.mapRepositoryError(error));
+      }
+      return Result.failure({
+        type: UserServiceErrorType.INTERNAL_ERROR,
+        message: 'Failed to create user with audit log',
+        details: error.message,
+      });
+    }
+  }
+
+  // Another transactional example: bulk update with audit
+  async updateUserWithAudit(
+    id: string,
+    dto: UpdateUserDto & { performedBy: string },
+  ): Promise<Result<User, UserServiceError>> {
+    if (!id || id.trim().length === 0) {
+      return Result.failure({
+        type: UserServiceErrorType.VALIDATION_ERROR,
+        message: 'User ID is required',
+      });
+    }
+
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Get current user state for audit
+        const currentUser = await tx.user.findUnique({ where: { id } });
+        if (!currentUser) {
+          throw {
+            code: UserRepositoryErrorCode.NOT_FOUND,
+            message: `User with id ${id} not found`,
+          };
+        }
+
+        // Update user
+        const updateResult = await this.userRepository.updateWithinTransaction(
+          id,
+          dto,
+          tx,
+        );
+
+        if (Result.isFailure(updateResult)) {
+          throw updateResult.error;
+        }
+
+        const updatedUser = updateResult.value;
+
+        // Create audit log
+        const changes: Record<string, any> = {};
+        if (dto.email && dto.email !== currentUser.email) {
+          changes.email = { from: currentUser.email, to: dto.email };
+        }
+        if (dto.name && dto.name !== currentUser.name) {
+          changes.name = { from: currentUser.name, to: dto.name };
+        }
+
+        const auditResult =
+          await this.auditLogRepository.createWithinTransaction(
+            {
+              userId: id,
+              action: AuditAction.UPDATE,
+              details: changes,
+              performedBy: dto.performedBy,
+            },
+            tx,
+          );
+
+        if (Result.isFailure(auditResult)) {
+          throw new Error('Failed to create audit log');
+        }
+
+        return updatedUser;
+      });
+
+      return Result.success(result);
+    } catch (error: any) {
+      if (error.code) {
+        return Result.failure(this.mapRepositoryError(error));
+      }
+      return Result.failure({
+        type: UserServiceErrorType.INTERNAL_ERROR,
+        message: 'Failed to update user with audit log',
+        details: error.message,
+      });
+    }
   }
 }

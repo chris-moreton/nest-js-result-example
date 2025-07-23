@@ -13,10 +13,15 @@ exports.UserService = void 0;
 const common_1 = require("@nestjs/common");
 const result_1 = require("../../common/utils/result");
 const error_codes_enum_1 = require("../../common/enums/error-codes.enum");
+const audit_action_enum_1 = require("../../common/enums/audit-action.enum");
+const prisma_service_1 = require("../../prisma/prisma.service");
 const user_repository_1 = require("../repositories/user.repository");
+const audit_log_repository_1 = require("../../audit/repositories/audit-log.repository");
 let UserService = class UserService {
-    constructor(userRepository) {
+    constructor(userRepository, auditLogRepository, prisma) {
         this.userRepository = userRepository;
+        this.auditLogRepository = auditLogRepository;
+        this.prisma = prisma;
     }
     mapRepositoryError(error) {
         switch (error.code) {
@@ -136,10 +141,114 @@ let UserService = class UserService {
         const usersResult = await this.findAllUsers();
         return result_1.Result.map(usersResult, (users) => users.length);
     }
+    async createUserWithAudit(dto) {
+        if (dto.email.length > 255) {
+            return result_1.Result.failure({
+                type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
+                message: 'Email is too long (max 255 characters)',
+            });
+        }
+        if (dto.name.trim().length === 0) {
+            return result_1.Result.failure({
+                type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
+                message: 'Name cannot be empty',
+            });
+        }
+        try {
+            const result = await this.prisma.$transaction(async (tx) => {
+                const userResult = await this.userRepository.createWithinTransaction({
+                    email: dto.email,
+                    name: dto.name,
+                }, tx);
+                if (result_1.Result.isFailure(userResult)) {
+                    throw userResult.error;
+                }
+                const user = userResult.value;
+                const auditResult = await this.auditLogRepository.createWithinTransaction({
+                    userId: user.id,
+                    action: audit_action_enum_1.AuditAction.CREATE,
+                    details: {
+                        email: user.email,
+                        name: user.name,
+                    },
+                    performedBy: dto.performedBy,
+                }, tx);
+                if (result_1.Result.isFailure(auditResult)) {
+                    throw new Error('Failed to create audit log');
+                }
+                return user;
+            });
+            return result_1.Result.success(result);
+        }
+        catch (error) {
+            if (error.code) {
+                return result_1.Result.failure(this.mapRepositoryError(error));
+            }
+            return result_1.Result.failure({
+                type: error_codes_enum_1.UserServiceErrorType.INTERNAL_ERROR,
+                message: 'Failed to create user with audit log',
+                details: error.message,
+            });
+        }
+    }
+    async updateUserWithAudit(id, dto) {
+        if (!id || id.trim().length === 0) {
+            return result_1.Result.failure({
+                type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
+                message: 'User ID is required',
+            });
+        }
+        try {
+            const result = await this.prisma.$transaction(async (tx) => {
+                const currentUser = await tx.user.findUnique({ where: { id } });
+                if (!currentUser) {
+                    throw {
+                        code: error_codes_enum_1.UserRepositoryErrorCode.NOT_FOUND,
+                        message: `User with id ${id} not found`,
+                    };
+                }
+                const updateResult = await this.userRepository.updateWithinTransaction(id, dto, tx);
+                if (result_1.Result.isFailure(updateResult)) {
+                    throw updateResult.error;
+                }
+                const updatedUser = updateResult.value;
+                const changes = {};
+                if (dto.email && dto.email !== currentUser.email) {
+                    changes.email = { from: currentUser.email, to: dto.email };
+                }
+                if (dto.name && dto.name !== currentUser.name) {
+                    changes.name = { from: currentUser.name, to: dto.name };
+                }
+                const auditResult = await this.auditLogRepository.createWithinTransaction({
+                    userId: id,
+                    action: audit_action_enum_1.AuditAction.UPDATE,
+                    details: changes,
+                    performedBy: dto.performedBy,
+                }, tx);
+                if (result_1.Result.isFailure(auditResult)) {
+                    throw new Error('Failed to create audit log');
+                }
+                return updatedUser;
+            });
+            return result_1.Result.success(result);
+        }
+        catch (error) {
+            if (error.code) {
+                return result_1.Result.failure(this.mapRepositoryError(error));
+            }
+            return result_1.Result.failure({
+                type: error_codes_enum_1.UserServiceErrorType.INTERNAL_ERROR,
+                message: 'Failed to update user with audit log',
+                details: error.message,
+            });
+        }
+    }
 };
 exports.UserService = UserService;
 exports.UserService = UserService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [user_repository_1.UserRepository])
+    __metadata("design:paramtypes", [user_repository_1.UserRepository,
+        audit_log_repository_1.AuditLogRepository,
+        prisma_service_1.PrismaService])
 ], UserService);
 //# sourceMappingURL=user.service.js.map

@@ -1,6 +1,7 @@
 import { UserService } from '../services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { CreateUserWithAuditDto } from '../dto/create-user-with-audit.dto';
 import { User } from '../entities/user.entity';
 export declare class UserController {
     private readonly userService;
@@ -19,4 +20,8 @@ export declare class UserController {
         name?: string;
         email?: string;
     }): Promise<User[]>;
+    createWithAudit(createUserDto: CreateUserWithAuditDto): Promise<User>;
+    updateWithAudit(id: string, updateDto: UpdateUserDto & {
+        performedBy: string;
+    }): Promise<User>;
 }
