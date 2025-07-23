@@ -82,18 +82,12 @@ export class UserService {
 
     // Create user
     const createResult = await this.userRepository.create(dto);
-    return pipe(
-      createResult,
-      E.mapLeft(this.mapRepositoryError)
-    );
+    return pipe(createResult, E.mapLeft(this.mapRepositoryError));
   }
 
   async findAllUsers(): Promise<E.Either<UserServiceError, User[]>> {
     const result = await this.userRepository.findAll();
-    return pipe(
-      result,
-      E.mapLeft(this.mapRepositoryError)
-    );
+    return pipe(result, E.mapLeft(this.mapRepositoryError));
   }
 
   async findUserById(id: string): Promise<E.Either<UserServiceError, User>> {
@@ -105,10 +99,7 @@ export class UserService {
     }
 
     const result = await this.userRepository.findById(id);
-    return pipe(
-      result,
-      E.mapLeft(this.mapRepositoryError)
-    );
+    return pipe(result, E.mapLeft(this.mapRepositoryError));
   }
 
   async updateUser(
@@ -147,7 +138,11 @@ export class UserService {
     }
 
     // Check if new email is already taken by another user
-    if (dto.email && E.isRight(existingUserResult) && dto.email !== existingUserResult.right.email) {
+    if (
+      dto.email &&
+      E.isRight(existingUserResult) &&
+      dto.email !== existingUserResult.right.email
+    ) {
       const emailCheck = await this.userRepository.findByEmail(dto.email);
       if (E.isRight(emailCheck)) {
         return E.left({
@@ -158,10 +153,7 @@ export class UserService {
     }
 
     const updateResult = await this.userRepository.update(id, dto);
-    return pipe(
-      updateResult,
-      E.mapLeft(this.mapRepositoryError)
-    );
+    return pipe(updateResult, E.mapLeft(this.mapRepositoryError));
   }
 
   async deleteUser(id: string): Promise<E.Either<UserServiceError, User>> {
@@ -173,10 +165,7 @@ export class UserService {
     }
 
     const deleteResult = await this.userRepository.delete(id);
-    return pipe(
-      deleteResult,
-      E.mapLeft(this.mapRepositoryError)
-    );
+    return pipe(deleteResult, E.mapLeft(this.mapRepositoryError));
   }
 
   // Functional helper methods
@@ -184,10 +173,7 @@ export class UserService {
     processor: (users: User[]) => T,
   ): Promise<E.Either<UserServiceError, T>> {
     const usersResult = await this.findAllUsers();
-    return pipe(
-      usersResult,
-      E.map(processor)
-    );
+    return pipe(usersResult, E.map(processor));
   }
 
   async findUsersBy(
@@ -196,7 +182,7 @@ export class UserService {
     const usersResult = await this.findAllUsers();
     return pipe(
       usersResult,
-      E.map((users) => users.filter(predicate))
+      E.map((users) => users.filter(predicate)),
     );
   }
 
@@ -204,7 +190,7 @@ export class UserService {
     const usersResult = await this.findAllUsers();
     return pipe(
       usersResult,
-      E.map((users) => users.length)
+      E.map((users) => users.length),
     );
   }
 

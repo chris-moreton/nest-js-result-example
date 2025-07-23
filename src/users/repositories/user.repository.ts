@@ -113,7 +113,9 @@ export class UserRepository {
     }
   }
 
-  async findByEmail(email: string): Promise<E.Either<UserRepositoryError, User>> {
+  async findByEmail(
+    email: string,
+  ): Promise<E.Either<UserRepositoryError, User>> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { email },
