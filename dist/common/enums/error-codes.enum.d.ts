@@ -1,0 +1,11 @@
+export declare enum UserRepositoryErrorCode {
+    NOT_FOUND = "NOT_FOUND",
+    DUPLICATE_EMAIL = "DUPLICATE_EMAIL",
+    DATABASE_ERROR = "DATABASE_ERROR"
+}
+export declare enum UserServiceErrorType {
+    VALIDATION_ERROR = "VALIDATION_ERROR",
+    USER_NOT_FOUND = "USER_NOT_FOUND",
+    EMAIL_ALREADY_EXISTS = "EMAIL_ALREADY_EXISTS",
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+}
