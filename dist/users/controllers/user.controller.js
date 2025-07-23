@@ -19,7 +19,7 @@ const error_codes_enum_1 = require("../../common/enums/error-codes.enum");
 const create_user_dto_1 = require("../dto/create-user.dto");
 const update_user_dto_1 = require("../dto/update-user.dto");
 const create_user_with_audit_dto_1 = require("../dto/create-user-with-audit.dto");
-const result_1 = require("../../common/utils/result");
+const E = require("fp-ts/Either");
 let UserController = class UserController {
     constructor(userService) {
         this.userService = userService;
@@ -40,10 +40,10 @@ let UserController = class UserController {
     }
     async handleResult(result) {
         const res = await result;
-        if (result_1.Result.isFailure(res)) {
-            this.handleServiceError(res.error);
+        if (E.isLeft(res)) {
+            this.handleServiceError(res.left);
         }
-        return res.value;
+        return res.right;
     }
     async create(createUserDto) {
         return this.handleResult(this.userService.createUser(createUserDto));

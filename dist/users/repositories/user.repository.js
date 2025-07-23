@@ -11,7 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserRepository = void 0;
 const common_1 = require("@nestjs/common");
-const result_1 = require("../../common/utils/result");
+const E = require("fp-ts/Either");
 const error_codes_enum_1 = require("../../common/enums/error-codes.enum");
 const prisma_service_1 = require("../../prisma/prisma.service");
 let UserRepository = class UserRepository {
@@ -35,16 +35,16 @@ let UserRepository = class UserRepository {
                     name: data.name,
                 },
             });
-            return result_1.Result.success(this.mapPrismaUserToEntity(user));
+            return E.right(this.mapPrismaUserToEntity(user));
         }
         catch (error) {
             if (error.code === 'P2002') {
-                return result_1.Result.failure({
+                return E.left({
                     code: error_codes_enum_1.UserRepositoryErrorCode.DUPLICATE_EMAIL,
                     message: 'A user with this email already exists',
                 });
             }
-            return result_1.Result.failure({
+            return E.left({
                 code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
                 message: error.message || 'Database operation failed',
             });
@@ -58,16 +58,16 @@ let UserRepository = class UserRepository {
                     name: data.name,
                 },
             });
-            return result_1.Result.success(this.mapPrismaUserToEntity(user));
+            return E.right(this.mapPrismaUserToEntity(user));
         }
         catch (error) {
             if (error.code === 'P2002') {
-                return result_1.Result.failure({
+                return E.left({
                     code: error_codes_enum_1.UserRepositoryErrorCode.DUPLICATE_EMAIL,
                     message: 'A user with this email already exists',
                 });
             }
-            return result_1.Result.failure({
+            return E.left({
                 code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
                 message: error.message || 'Database operation failed',
             });
@@ -78,10 +78,10 @@ let UserRepository = class UserRepository {
             const users = await this.prisma.user.findMany({
                 orderBy: { createdAt: 'desc' },
             });
-            return result_1.Result.success(users.map(this.mapPrismaUserToEntity));
+            return E.right(users.map(this.mapPrismaUserToEntity));
         }
         catch (error) {
-            return result_1.Result.failure({
+            return E.left({
                 code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
                 message: error.message || 'Database operation failed',
             });
@@ -93,15 +93,15 @@ let UserRepository = class UserRepository {
                 where: { id },
             });
             if (!user) {
-                return result_1.Result.failure({
+                return E.left({
                     code: error_codes_enum_1.UserRepositoryErrorCode.NOT_FOUND,
                     message: `User with id ${id} not found`,
                 });
             }
-            return result_1.Result.success(this.mapPrismaUserToEntity(user));
+            return E.right(this.mapPrismaUserToEntity(user));
         }
         catch (error) {
-            return result_1.Result.failure({
+            return E.left({
                 code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
                 message: error.message || 'Database operation failed',
             });
@@ -113,15 +113,15 @@ let UserRepository = class UserRepository {
                 where: { email },
             });
             if (!user) {
-                return result_1.Result.failure({
+                return E.left({
                     code: error_codes_enum_1.UserRepositoryErrorCode.NOT_FOUND,
                     message: `User with email ${email} not found`,
                 });
             }
-            return result_1.Result.success(this.mapPrismaUserToEntity(user));
+            return E.right(this.mapPrismaUserToEntity(user));
         }
         catch (error) {
-            return result_1.Result.failure({
+            return E.left({
                 code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
                 message: error.message || 'Database operation failed',
             });
@@ -136,22 +136,22 @@ let UserRepository = class UserRepository {
                     ...(data.name && { name: data.name }),
                 },
             });
-            return result_1.Result.success(this.mapPrismaUserToEntity(user));
+            return E.right(this.mapPrismaUserToEntity(user));
         }
         catch (error) {
             if (error.code === 'P2025') {
-                return result_1.Result.failure({
+                return E.left({
                     code: error_codes_enum_1.UserRepositoryErrorCode.NOT_FOUND,
                     message: `User with id ${id} not found`,
                 });
             }
             if (error.code === 'P2002') {
-                return result_1.Result.failure({
+                return E.left({
                     code: error_codes_enum_1.UserRepositoryErrorCode.DUPLICATE_EMAIL,
                     message: 'A user with this email already exists',
                 });
             }
-            return result_1.Result.failure({
+            return E.left({
                 code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
                 message: error.message || 'Database operation failed',
             });
@@ -166,22 +166,22 @@ let UserRepository = class UserRepository {
                     ...(data.name && { name: data.name }),
                 },
             });
-            return result_1.Result.success(this.mapPrismaUserToEntity(user));
+            return E.right(this.mapPrismaUserToEntity(user));
         }
         catch (error) {
             if (error.code === 'P2025') {
-                return result_1.Result.failure({
+                return E.left({
                     code: error_codes_enum_1.UserRepositoryErrorCode.NOT_FOUND,
                     message: `User with id ${id} not found`,
                 });
             }
             if (error.code === 'P2002') {
-                return result_1.Result.failure({
+                return E.left({
                     code: error_codes_enum_1.UserRepositoryErrorCode.DUPLICATE_EMAIL,
                     message: 'A user with this email already exists',
                 });
             }
-            return result_1.Result.failure({
+            return E.left({
                 code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
                 message: error.message || 'Database operation failed',
             });
@@ -192,16 +192,16 @@ let UserRepository = class UserRepository {
             const user = await this.prisma.user.delete({
                 where: { id },
             });
-            return result_1.Result.success(this.mapPrismaUserToEntity(user));
+            return E.right(this.mapPrismaUserToEntity(user));
         }
         catch (error) {
             if (error.code === 'P2025') {
-                return result_1.Result.failure({
+                return E.left({
                     code: error_codes_enum_1.UserRepositoryErrorCode.NOT_FOUND,
                     message: `User with id ${id} not found`,
                 });
             }
-            return result_1.Result.failure({
+            return E.left({
                 code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
                 message: error.message || 'Database operation failed',
             });
@@ -212,10 +212,10 @@ let UserRepository = class UserRepository {
             const count = await this.prisma.user.count({
                 where: { id },
             });
-            return result_1.Result.success(count > 0);
+            return E.right(count > 0);
         }
         catch (error) {
-            return result_1.Result.failure({
+            return E.left({
                 code: error_codes_enum_1.UserRepositoryErrorCode.DATABASE_ERROR,
                 message: error.message || 'Database operation failed',
             });

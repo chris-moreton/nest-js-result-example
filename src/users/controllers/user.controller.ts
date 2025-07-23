@@ -16,7 +16,7 @@ import { UserServiceErrorType } from '../../common/enums/error-codes.enum';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { CreateUserWithAuditDto } from '../dto/create-user-with-audit.dto';
-import { Result } from '../../common/utils/result';
+import * as E from 'fp-ts/Either';
 import { User } from '../entities/user.entity';
 
 @Controller('users')
@@ -43,13 +43,13 @@ export class UserController {
   }
 
   private async handleResult<T>(
-    result: Promise<Result<T, UserServiceError>>,
+    result: Promise<E.Either<UserServiceError, T>>,
   ): Promise<T> {
     const res = await result;
-    if (Result.isFailure(res)) {
-      this.handleServiceError(res.error);
+    if (E.isLeft(res)) {
+      this.handleServiceError(res.left);
     }
-    return res.value;
+    return res.right;
   }
 
   @Post()

@@ -11,7 +11,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserService = void 0;
 const common_1 = require("@nestjs/common");
-const result_1 = require("../../common/utils/result");
+const E = require("fp-ts/Either");
+const function_1 = require("fp-ts/function");
 const error_codes_enum_1 = require("../../common/enums/error-codes.enum");
 const audit_action_enum_1 = require("../../common/enums/audit-action.enum");
 const prisma_service_1 = require("../../prisma/prisma.service");
@@ -46,110 +47,110 @@ let UserService = class UserService {
     }
     async createUser(dto) {
         if (dto.email.length > 255) {
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
                 message: 'Email is too long (max 255 characters)',
             });
         }
         if (dto.name.trim().length === 0) {
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
                 message: 'Name cannot be empty',
             });
         }
         const existingUser = await this.userRepository.findByEmail(dto.email);
-        if (result_1.Result.isSuccess(existingUser)) {
-            return result_1.Result.failure({
+        if (E.isRight(existingUser)) {
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.EMAIL_ALREADY_EXISTS,
                 message: 'A user with this email already exists',
             });
         }
         const createResult = await this.userRepository.create(dto);
-        return result_1.Result.mapError(createResult, this.mapRepositoryError);
+        return (0, function_1.pipe)(createResult, E.mapLeft(this.mapRepositoryError));
     }
     async findAllUsers() {
         const result = await this.userRepository.findAll();
-        return result_1.Result.mapError(result, this.mapRepositoryError);
+        return (0, function_1.pipe)(result, E.mapLeft(this.mapRepositoryError));
     }
     async findUserById(id) {
         if (!id || id.trim().length === 0) {
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
                 message: 'User ID is required',
             });
         }
         const result = await this.userRepository.findById(id);
-        return result_1.Result.mapError(result, this.mapRepositoryError);
+        return (0, function_1.pipe)(result, E.mapLeft(this.mapRepositoryError));
     }
     async updateUser(id, dto) {
         if (!id || id.trim().length === 0) {
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
                 message: 'User ID is required',
             });
         }
         const existingUserResult = await this.userRepository.findById(id);
-        if (result_1.Result.isFailure(existingUserResult)) {
-            return result_1.Result.failure({
+        if (E.isLeft(existingUserResult)) {
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.USER_NOT_FOUND,
                 message: `User with id ${id} not found`,
             });
         }
         if (dto.email && dto.email.length > 255) {
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
                 message: 'Email is too long (max 255 characters)',
             });
         }
         if (dto.name !== undefined && dto.name.trim().length === 0) {
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
                 message: 'Name cannot be empty',
             });
         }
-        if (dto.email && dto.email !== existingUserResult.value.email) {
+        if (dto.email && E.isRight(existingUserResult) && dto.email !== existingUserResult.right.email) {
             const emailCheck = await this.userRepository.findByEmail(dto.email);
-            if (result_1.Result.isSuccess(emailCheck)) {
-                return result_1.Result.failure({
+            if (E.isRight(emailCheck)) {
+                return E.left({
                     type: error_codes_enum_1.UserServiceErrorType.EMAIL_ALREADY_EXISTS,
                     message: 'A user with this email already exists',
                 });
             }
         }
         const updateResult = await this.userRepository.update(id, dto);
-        return result_1.Result.mapError(updateResult, this.mapRepositoryError);
+        return (0, function_1.pipe)(updateResult, E.mapLeft(this.mapRepositoryError));
     }
     async deleteUser(id) {
         if (!id || id.trim().length === 0) {
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
                 message: 'User ID is required',
             });
         }
         const deleteResult = await this.userRepository.delete(id);
-        return result_1.Result.mapError(deleteResult, this.mapRepositoryError);
+        return (0, function_1.pipe)(deleteResult, E.mapLeft(this.mapRepositoryError));
     }
     async processUsers(processor) {
         const usersResult = await this.findAllUsers();
-        return result_1.Result.map(usersResult, processor);
+        return (0, function_1.pipe)(usersResult, E.map(processor));
     }
     async findUsersBy(predicate) {
         const usersResult = await this.findAllUsers();
-        return result_1.Result.map(usersResult, (users) => users.filter(predicate));
+        return (0, function_1.pipe)(usersResult, E.map((users) => users.filter(predicate)));
     }
     async countUsers() {
         const usersResult = await this.findAllUsers();
-        return result_1.Result.map(usersResult, (users) => users.length);
+        return (0, function_1.pipe)(usersResult, E.map((users) => users.length));
     }
     async createUserWithAudit(dto) {
         if (dto.email.length > 255) {
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
                 message: 'Email is too long (max 255 characters)',
             });
         }
         if (dto.name.trim().length === 0) {
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
                 message: 'Name cannot be empty',
             });
@@ -160,10 +161,10 @@ let UserService = class UserService {
                     email: dto.email,
                     name: dto.name,
                 }, tx);
-                if (result_1.Result.isFailure(userResult)) {
-                    throw userResult.error;
+                if (E.isLeft(userResult)) {
+                    throw userResult.left;
                 }
-                const user = userResult.value;
+                const user = userResult.right;
                 const auditResult = await this.auditLogRepository.createWithinTransaction({
                     userId: user.id,
                     action: audit_action_enum_1.AuditAction.CREATE,
@@ -173,18 +174,18 @@ let UserService = class UserService {
                     },
                     performedBy: dto.performedBy,
                 }, tx);
-                if (result_1.Result.isFailure(auditResult)) {
+                if (E.isLeft(auditResult)) {
                     throw new Error('Failed to create audit log');
                 }
                 return user;
             });
-            return result_1.Result.success(result);
+            return E.right(result);
         }
         catch (error) {
             if (error.code) {
-                return result_1.Result.failure(this.mapRepositoryError(error));
+                return E.left(this.mapRepositoryError(error));
             }
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.INTERNAL_ERROR,
                 message: 'Failed to create user with audit log',
                 details: error.message,
@@ -193,7 +194,7 @@ let UserService = class UserService {
     }
     async updateUserWithAudit(id, dto) {
         if (!id || id.trim().length === 0) {
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.VALIDATION_ERROR,
                 message: 'User ID is required',
             });
@@ -208,10 +209,10 @@ let UserService = class UserService {
                     };
                 }
                 const updateResult = await this.userRepository.updateWithinTransaction(id, dto, tx);
-                if (result_1.Result.isFailure(updateResult)) {
-                    throw updateResult.error;
+                if (E.isLeft(updateResult)) {
+                    throw updateResult.left;
                 }
-                const updatedUser = updateResult.value;
+                const updatedUser = updateResult.right;
                 const changes = {};
                 if (dto.email && dto.email !== currentUser.email) {
                     changes.email = { from: currentUser.email, to: dto.email };
@@ -225,18 +226,18 @@ let UserService = class UserService {
                     details: changes,
                     performedBy: dto.performedBy,
                 }, tx);
-                if (result_1.Result.isFailure(auditResult)) {
+                if (E.isLeft(auditResult)) {
                     throw new Error('Failed to create audit log');
                 }
                 return updatedUser;
             });
-            return result_1.Result.success(result);
+            return E.right(result);
         }
         catch (error) {
             if (error.code) {
-                return result_1.Result.failure(this.mapRepositoryError(error));
+                return E.left(this.mapRepositoryError(error));
             }
-            return result_1.Result.failure({
+            return E.left({
                 type: error_codes_enum_1.UserServiceErrorType.INTERNAL_ERROR,
                 message: 'Failed to update user with audit log',
                 details: error.message,

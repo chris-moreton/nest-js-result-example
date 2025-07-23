@@ -4,9 +4,9 @@ This is an example NestJS REST API that demonstrates functional programming patt
 
 ## Features
 
-- **Result Pattern**: Type-safe error handling without exceptions
+- **fp-ts Integration**: Uses fp-ts Either type for type-safe error handling
 - **Functional Repository Layer**: Custom repositories wrapping Prisma ORM
-- **Functional Service Layer**: Business logic using Result pattern
+- **Functional Service Layer**: Business logic using Either pattern
 - **Functional Validation**: Custom validation pipe with functional approach
 - **Functional Utilities**: Compose/pipe functions for function composition
 - **CRUD Operations**: Full Create, Read, Update, Delete endpoints for Users
@@ -30,15 +30,15 @@ src/
 
 ## Functional Programming Patterns
 
-### 1. Result Pattern
-Instead of throwing exceptions, functions return `Result<T, E>` types:
+### 1. fp-ts Either Pattern
+Instead of throwing exceptions, functions return `Either<E, A>` types:
 
 ```typescript
 const result = await userService.createUser(dto);
-if (Result.isSuccess(result)) {
-  return result.value;
+if (E.isRight(result)) {
+  return result.right;
 } else {
-  // Handle error
+  // Handle error: result.left
 }
 ```
 

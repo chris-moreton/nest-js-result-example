@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { Result } from '../../common/utils/result';
+import * as E from 'fp-ts/Either';
 import { UserRepositoryErrorCode } from '../../common/enums/error-codes.enum';
 import { PrismaService } from '../../prisma/prisma.service';
 import { User } from '../entities/user.entity';
@@ -13,13 +13,13 @@ export declare class UserRepository {
     private readonly prisma;
     constructor(prisma: PrismaService);
     private mapPrismaUserToEntity;
-    create(data: CreateUserDto): Promise<Result<User, UserRepositoryError>>;
-    createWithinTransaction(data: CreateUserDto, tx: Prisma.TransactionClient): Promise<Result<User, UserRepositoryError>>;
-    findAll(): Promise<Result<User[], UserRepositoryError>>;
-    findById(id: string): Promise<Result<User, UserRepositoryError>>;
-    findByEmail(email: string): Promise<Result<User, UserRepositoryError>>;
-    update(id: string, data: UpdateUserDto): Promise<Result<User, UserRepositoryError>>;
-    updateWithinTransaction(id: string, data: UpdateUserDto, tx: Prisma.TransactionClient): Promise<Result<User, UserRepositoryError>>;
-    delete(id: string): Promise<Result<User, UserRepositoryError>>;
-    exists(id: string): Promise<Result<boolean, UserRepositoryError>>;
+    create(data: CreateUserDto): Promise<E.Either<UserRepositoryError, User>>;
+    createWithinTransaction(data: CreateUserDto, tx: Prisma.TransactionClient): Promise<E.Either<UserRepositoryError, User>>;
+    findAll(): Promise<E.Either<UserRepositoryError, User[]>>;
+    findById(id: string): Promise<E.Either<UserRepositoryError, User>>;
+    findByEmail(email: string): Promise<E.Either<UserRepositoryError, User>>;
+    update(id: string, data: UpdateUserDto): Promise<E.Either<UserRepositoryError, User>>;
+    updateWithinTransaction(id: string, data: UpdateUserDto, tx: Prisma.TransactionClient): Promise<E.Either<UserRepositoryError, User>>;
+    delete(id: string): Promise<E.Either<UserRepositoryError, User>>;
+    exists(id: string): Promise<E.Either<UserRepositoryError, boolean>>;
 }

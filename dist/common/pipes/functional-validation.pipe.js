@@ -10,7 +10,7 @@ exports.FunctionalValidationPipe = void 0;
 const common_1 = require("@nestjs/common");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
-const result_1 = require("../utils/result");
+const E = require("fp-ts/Either");
 let FunctionalValidationPipe = class FunctionalValidationPipe {
     async transform(value, { metatype }) {
         if (!metatype || !this.toValidate(metatype)) {
@@ -18,13 +18,13 @@ let FunctionalValidationPipe = class FunctionalValidationPipe {
         }
         const object = (0, class_transformer_1.plainToInstance)(metatype, value);
         const validationResult = await this.validateObject(object);
-        if (result_1.Result.isFailure(validationResult)) {
+        if (E.isLeft(validationResult)) {
             throw new common_1.BadRequestException({
                 message: 'Validation failed',
-                errors: validationResult.error,
+                errors: validationResult.left,
             });
         }
-        return validationResult.value;
+        return validationResult.right;
     }
     toValidate(metatype) {
         const types = [String, Boolean, Number, Array, Object];
@@ -33,13 +33,13 @@ let FunctionalValidationPipe = class FunctionalValidationPipe {
     async validateObject(object) {
         const errors = await (0, class_validator_1.validate)(object);
         if (errors.length > 0) {
-            const validationErrors = errors.map(error => ({
+            const validationErrors = errors.map((error) => ({
                 field: error.property,
                 constraints: Object.values(error.constraints || {}),
             }));
-            return result_1.Result.failure(validationErrors);
+            return E.left(validationErrors);
         }
-        return result_1.Result.success(object);
+        return E.right(object);
     }
 };
 exports.FunctionalValidationPipe = FunctionalValidationPipe;

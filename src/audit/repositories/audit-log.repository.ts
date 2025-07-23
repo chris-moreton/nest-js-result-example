@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { Result } from '../../common/utils/result';
+import * as E from 'fp-ts/Either';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLog } from '../entities/audit-log.entity';
 import { AuditAction } from '../../common/enums/audit-action.enum';
@@ -24,7 +24,7 @@ export class AuditLogRepository {
   async createWithinTransaction(
     data: CreateAuditLogDto,
     tx: Prisma.TransactionClient,
-  ): Promise<Result<AuditLog, AuditLogError>> {
+  ): Promise<E.Either<AuditLogError, AuditLog>> {
     try {
       const auditLog = await tx.auditLog.create({
         data: {
@@ -35,7 +35,7 @@ export class AuditLogRepository {
         },
       });
 
-      return Result.success({
+      return E.right({
         id: auditLog.id,
         userId: auditLog.userId,
         action: auditLog.action,
@@ -44,7 +44,7 @@ export class AuditLogRepository {
         createdAt: auditLog.createdAt,
       });
     } catch (error: any) {
-      return Result.failure({
+      return E.left({
         code: 'DATABASE_ERROR',
         message: error.message || 'Failed to create audit log',
       });
@@ -53,14 +53,14 @@ export class AuditLogRepository {
 
   async findByUserId(
     userId: string,
-  ): Promise<Result<AuditLog[], AuditLogError>> {
+  ): Promise<E.Either<AuditLogError, AuditLog[]>> {
     try {
       const logs = await this.prisma.auditLog.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
       });
 
-      return Result.success(
+      return E.right(
         logs.map((log) => ({
           id: log.id,
           userId: log.userId,
@@ -71,7 +71,7 @@ export class AuditLogRepository {
         })),
       );
     } catch (error: any) {
-      return Result.failure({
+      return E.left({
         code: 'DATABASE_ERROR',
         message: error.message || 'Failed to fetch audit logs',
       });

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Result } from '../../common/utils/result';
+import * as E from 'fp-ts/Either';
+import { pipe } from 'fp-ts/function';
 import {
   UserRepositoryErrorCode,
   UserServiceErrorType,
@@ -54,17 +55,17 @@ export class UserService {
 
   async createUser(
     dto: CreateUserDto,
-  ): Promise<Result<User, UserServiceError>> {
+  ): Promise<E.Either<UserServiceError, User>> {
     // Additional business logic validation
     if (dto.email.length > 255) {
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.VALIDATION_ERROR,
         message: 'Email is too long (max 255 characters)',
       });
     }
 
     if (dto.name.trim().length === 0) {
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.VALIDATION_ERROR,
         message: 'Name cannot be empty',
       });
@@ -72,8 +73,8 @@ export class UserService {
 
     // Check if email already exists
     const existingUser = await this.userRepository.findByEmail(dto.email);
-    if (Result.isSuccess(existingUser)) {
-      return Result.failure({
+    if (E.isRight(existingUser)) {
+      return E.left({
         type: UserServiceErrorType.EMAIL_ALREADY_EXISTS,
         message: 'A user with this email already exists',
       });
@@ -81,32 +82,41 @@ export class UserService {
 
     // Create user
     const createResult = await this.userRepository.create(dto);
-    return Result.mapError(createResult, this.mapRepositoryError);
+    return pipe(
+      createResult,
+      E.mapLeft(this.mapRepositoryError)
+    );
   }
 
-  async findAllUsers(): Promise<Result<User[], UserServiceError>> {
+  async findAllUsers(): Promise<E.Either<UserServiceError, User[]>> {
     const result = await this.userRepository.findAll();
-    return Result.mapError(result, this.mapRepositoryError);
+    return pipe(
+      result,
+      E.mapLeft(this.mapRepositoryError)
+    );
   }
 
-  async findUserById(id: string): Promise<Result<User, UserServiceError>> {
+  async findUserById(id: string): Promise<E.Either<UserServiceError, User>> {
     if (!id || id.trim().length === 0) {
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.VALIDATION_ERROR,
         message: 'User ID is required',
       });
     }
 
     const result = await this.userRepository.findById(id);
-    return Result.mapError(result, this.mapRepositoryError);
+    return pipe(
+      result,
+      E.mapLeft(this.mapRepositoryError)
+    );
   }
 
   async updateUser(
     id: string,
     dto: UpdateUserDto,
-  ): Promise<Result<User, UserServiceError>> {
+  ): Promise<E.Either<UserServiceError, User>> {
     if (!id || id.trim().length === 0) {
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.VALIDATION_ERROR,
         message: 'User ID is required',
       });
@@ -114,8 +124,8 @@ export class UserService {
 
     // Check if user exists
     const existingUserResult = await this.userRepository.findById(id);
-    if (Result.isFailure(existingUserResult)) {
-      return Result.failure({
+    if (E.isLeft(existingUserResult)) {
+      return E.left({
         type: UserServiceErrorType.USER_NOT_FOUND,
         message: `User with id ${id} not found`,
       });
@@ -123,24 +133,24 @@ export class UserService {
 
     // Validate update data
     if (dto.email && dto.email.length > 255) {
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.VALIDATION_ERROR,
         message: 'Email is too long (max 255 characters)',
       });
     }
 
     if (dto.name !== undefined && dto.name.trim().length === 0) {
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.VALIDATION_ERROR,
         message: 'Name cannot be empty',
       });
     }
 
     // Check if new email is already taken by another user
-    if (dto.email && dto.email !== existingUserResult.value.email) {
+    if (dto.email && E.isRight(existingUserResult) && dto.email !== existingUserResult.right.email) {
       const emailCheck = await this.userRepository.findByEmail(dto.email);
-      if (Result.isSuccess(emailCheck)) {
-        return Result.failure({
+      if (E.isRight(emailCheck)) {
+        return E.left({
           type: UserServiceErrorType.EMAIL_ALREADY_EXISTS,
           message: 'A user with this email already exists',
         });
@@ -148,55 +158,70 @@ export class UserService {
     }
 
     const updateResult = await this.userRepository.update(id, dto);
-    return Result.mapError(updateResult, this.mapRepositoryError);
+    return pipe(
+      updateResult,
+      E.mapLeft(this.mapRepositoryError)
+    );
   }
 
-  async deleteUser(id: string): Promise<Result<User, UserServiceError>> {
+  async deleteUser(id: string): Promise<E.Either<UserServiceError, User>> {
     if (!id || id.trim().length === 0) {
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.VALIDATION_ERROR,
         message: 'User ID is required',
       });
     }
 
     const deleteResult = await this.userRepository.delete(id);
-    return Result.mapError(deleteResult, this.mapRepositoryError);
+    return pipe(
+      deleteResult,
+      E.mapLeft(this.mapRepositoryError)
+    );
   }
 
   // Functional helper methods
   async processUsers<T>(
     processor: (users: User[]) => T,
-  ): Promise<Result<T, UserServiceError>> {
+  ): Promise<E.Either<UserServiceError, T>> {
     const usersResult = await this.findAllUsers();
-    return Result.map(usersResult, processor);
+    return pipe(
+      usersResult,
+      E.map(processor)
+    );
   }
 
   async findUsersBy(
     predicate: (user: User) => boolean,
-  ): Promise<Result<User[], UserServiceError>> {
+  ): Promise<E.Either<UserServiceError, User[]>> {
     const usersResult = await this.findAllUsers();
-    return Result.map(usersResult, (users) => users.filter(predicate));
+    return pipe(
+      usersResult,
+      E.map((users) => users.filter(predicate))
+    );
   }
 
-  async countUsers(): Promise<Result<number, UserServiceError>> {
+  async countUsers(): Promise<E.Either<UserServiceError, number>> {
     const usersResult = await this.findAllUsers();
-    return Result.map(usersResult, (users) => users.length);
+    return pipe(
+      usersResult,
+      E.map((users) => users.length)
+    );
   }
 
   // Transactional method with audit logging
   async createUserWithAudit(
     dto: CreateUserWithAuditDto,
-  ): Promise<Result<User, UserServiceError>> {
+  ): Promise<E.Either<UserServiceError, User>> {
     // Validation
     if (dto.email.length > 255) {
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.VALIDATION_ERROR,
         message: 'Email is too long (max 255 characters)',
       });
     }
 
     if (dto.name.trim().length === 0) {
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.VALIDATION_ERROR,
         message: 'Name cannot be empty',
       });
@@ -214,11 +239,11 @@ export class UserService {
           tx,
         );
 
-        if (Result.isFailure(userResult)) {
-          throw userResult.error;
+        if (E.isLeft(userResult)) {
+          throw userResult.left;
         }
 
-        const user = userResult.value;
+        const user = userResult.right;
 
         // Create audit log within same transaction
         const auditResult =
@@ -235,19 +260,19 @@ export class UserService {
             tx,
           );
 
-        if (Result.isFailure(auditResult)) {
+        if (E.isLeft(auditResult)) {
           throw new Error('Failed to create audit log');
         }
 
         return user;
       });
 
-      return Result.success(result);
+      return E.right(result);
     } catch (error: any) {
       if (error.code) {
-        return Result.failure(this.mapRepositoryError(error));
+        return E.left(this.mapRepositoryError(error));
       }
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.INTERNAL_ERROR,
         message: 'Failed to create user with audit log',
         details: error.message,
@@ -259,9 +284,9 @@ export class UserService {
   async updateUserWithAudit(
     id: string,
     dto: UpdateUserDto & { performedBy: string },
-  ): Promise<Result<User, UserServiceError>> {
+  ): Promise<E.Either<UserServiceError, User>> {
     if (!id || id.trim().length === 0) {
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.VALIDATION_ERROR,
         message: 'User ID is required',
       });
@@ -285,11 +310,11 @@ export class UserService {
           tx,
         );
 
-        if (Result.isFailure(updateResult)) {
-          throw updateResult.error;
+        if (E.isLeft(updateResult)) {
+          throw updateResult.left;
         }
 
-        const updatedUser = updateResult.value;
+        const updatedUser = updateResult.right;
 
         // Create audit log
         const changes: Record<string, any> = {};
@@ -311,19 +336,19 @@ export class UserService {
             tx,
           );
 
-        if (Result.isFailure(auditResult)) {
+        if (E.isLeft(auditResult)) {
           throw new Error('Failed to create audit log');
         }
 
         return updatedUser;
       });
 
-      return Result.success(result);
+      return E.right(result);
     } catch (error: any) {
       if (error.code) {
-        return Result.failure(this.mapRepositoryError(error));
+        return E.left(this.mapRepositoryError(error));
       }
-      return Result.failure({
+      return E.left({
         type: UserServiceErrorType.INTERNAL_ERROR,
         message: 'Failed to update user with audit log',
         details: error.message,

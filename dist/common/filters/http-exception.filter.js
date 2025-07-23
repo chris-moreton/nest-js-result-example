@@ -29,7 +29,9 @@ let FunctionalExceptionFilter = class FunctionalExceptionFilter {
             return {
                 ...baseResponse,
                 statusCode: status,
-                ...(typeof exceptionResponse === 'object' ? exceptionResponse : { message: exceptionResponse }),
+                ...(typeof exceptionResponse === 'object'
+                    ? exceptionResponse
+                    : { message: exceptionResponse }),
             };
         }
         if (exception instanceof Error) {
@@ -37,7 +39,9 @@ let FunctionalExceptionFilter = class FunctionalExceptionFilter {
                 ...baseResponse,
                 error: 'Internal Server Error',
                 message: exception.message,
-                ...(process.env.NODE_ENV === 'development' && { details: exception.stack }),
+                ...(process.env.NODE_ENV === 'development' && {
+                    details: exception.stack,
+                }),
             };
         }
         return {

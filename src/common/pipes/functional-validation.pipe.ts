@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { Result } from '../utils/result';
+import * as E from 'fp-ts/Either';
 
 export interface ValidationError {
   field: string;
@@ -23,14 +23,14 @@ export class FunctionalValidationPipe implements PipeTransform<any> {
     const object = plainToInstance(metatype, value);
     const validationResult = await this.validateObject(object);
 
-    if (Result.isFailure(validationResult)) {
+    if (E.isLeft(validationResult)) {
       throw new BadRequestException({
         message: 'Validation failed',
-        errors: validationResult.error,
+        errors: validationResult.left,
       });
     }
 
-    return validationResult.value;
+    return validationResult.right;
   }
 
   private toValidate(metatype: Function): boolean {
@@ -40,7 +40,7 @@ export class FunctionalValidationPipe implements PipeTransform<any> {
 
   private async validateObject(
     object: any,
-  ): Promise<Result<any, ValidationError[]>> {
+  ): Promise<E.Either<ValidationError[], any>> {
     const errors = await validate(object);
 
     if (errors.length > 0) {
@@ -48,9 +48,9 @@ export class FunctionalValidationPipe implements PipeTransform<any> {
         field: error.property,
         constraints: Object.values(error.constraints || {}),
       }));
-      return Result.failure(validationErrors);
+      return E.left(validationErrors);
     }
 
-    return Result.success(object);
+    return E.right(object);
   }
 }

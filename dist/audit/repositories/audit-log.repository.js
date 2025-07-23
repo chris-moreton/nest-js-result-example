@@ -11,7 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuditLogRepository = void 0;
 const common_1 = require("@nestjs/common");
-const result_1 = require("../../common/utils/result");
+const E = require("fp-ts/Either");
 const prisma_service_1 = require("../../prisma/prisma.service");
 let AuditLogRepository = class AuditLogRepository {
     constructor(prisma) {
@@ -27,7 +27,7 @@ let AuditLogRepository = class AuditLogRepository {
                     performedBy: data.performedBy,
                 },
             });
-            return result_1.Result.success({
+            return E.right({
                 id: auditLog.id,
                 userId: auditLog.userId,
                 action: auditLog.action,
@@ -37,7 +37,7 @@ let AuditLogRepository = class AuditLogRepository {
             });
         }
         catch (error) {
-            return result_1.Result.failure({
+            return E.left({
                 code: 'DATABASE_ERROR',
                 message: error.message || 'Failed to create audit log',
             });
@@ -49,7 +49,7 @@ let AuditLogRepository = class AuditLogRepository {
                 where: { userId },
                 orderBy: { createdAt: 'desc' },
             });
-            return result_1.Result.success(logs.map((log) => ({
+            return E.right(logs.map((log) => ({
                 id: log.id,
                 userId: log.userId,
                 action: log.action,
@@ -59,7 +59,7 @@ let AuditLogRepository = class AuditLogRepository {
             })));
         }
         catch (error) {
-            return result_1.Result.failure({
+            return E.left({
                 code: 'DATABASE_ERROR',
                 message: error.message || 'Failed to fetch audit logs',
             });

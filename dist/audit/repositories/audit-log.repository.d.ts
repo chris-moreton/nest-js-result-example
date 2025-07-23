@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { Result } from '../../common/utils/result';
+import * as E from 'fp-ts/Either';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLog } from '../entities/audit-log.entity';
 import { AuditAction } from '../../common/enums/audit-action.enum';
@@ -16,6 +16,6 @@ export interface AuditLogError {
 export declare class AuditLogRepository {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    createWithinTransaction(data: CreateAuditLogDto, tx: Prisma.TransactionClient): Promise<Result<AuditLog, AuditLogError>>;
-    findByUserId(userId: string): Promise<Result<AuditLog[], AuditLogError>>;
+    createWithinTransaction(data: CreateAuditLogDto, tx: Prisma.TransactionClient): Promise<E.Either<AuditLogError, AuditLog>>;
+    findByUserId(userId: string): Promise<E.Either<AuditLogError, AuditLog[]>>;
 }
