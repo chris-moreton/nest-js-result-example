@@ -1,4 +1,9 @@
-import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from '@nestjs/common';
+import {
+  PipeTransform,
+  Injectable,
+  ArgumentMetadata,
+  BadRequestException,
+} from '@nestjs/common';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { Result } from '../utils/result';
@@ -33,11 +38,13 @@ export class FunctionalValidationPipe implements PipeTransform<any> {
     return !types.includes(metatype);
   }
 
-  private async validateObject(object: any): Promise<Result<any, ValidationError[]>> {
+  private async validateObject(
+    object: any,
+  ): Promise<Result<any, ValidationError[]>> {
     const errors = await validate(object);
 
     if (errors.length > 0) {
-      const validationErrors: ValidationError[] = errors.map(error => ({
+      const validationErrors: ValidationError[] = errors.map((error) => ({
         field: error.property,
         constraints: Object.values(error.constraints || {}),
       }));

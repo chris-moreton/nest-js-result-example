@@ -25,11 +25,14 @@ export class FunctionalExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const errorResponse = this.createErrorResponse(exception, request);
-    
+
     response.status(errorResponse.statusCode).json(errorResponse);
   }
 
-  private createErrorResponse(exception: unknown, request: Request): ErrorResponse {
+  private createErrorResponse(
+    exception: unknown,
+    request: Request,
+  ): ErrorResponse {
     const baseResponse: ErrorResponse = {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       timestamp: new Date().toISOString(),
@@ -44,7 +47,9 @@ export class FunctionalExceptionFilter implements ExceptionFilter {
       return {
         ...baseResponse,
         statusCode: status,
-        ...(typeof exceptionResponse === 'object' ? exceptionResponse : { message: exceptionResponse }),
+        ...(typeof exceptionResponse === 'object'
+          ? exceptionResponse
+          : { message: exceptionResponse }),
       };
     }
 
@@ -53,7 +58,9 @@ export class FunctionalExceptionFilter implements ExceptionFilter {
         ...baseResponse,
         error: 'Internal Server Error',
         message: exception.message,
-        ...(process.env.NODE_ENV === 'development' && { details: exception.stack }),
+        ...(process.env.NODE_ENV === 'development' && {
+          details: exception.stack,
+        }),
       };
     }
 

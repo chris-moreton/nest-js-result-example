@@ -51,7 +51,9 @@ export class AuditLogRepository {
     }
   }
 
-  async findByUserId(userId: string): Promise<Result<AuditLog[], AuditLogError>> {
+  async findByUserId(
+    userId: string,
+  ): Promise<Result<AuditLog[], AuditLogError>> {
     try {
       const logs = await this.prisma.auditLog.findMany({
         where: { userId },

@@ -25,7 +25,9 @@ export function compose<T, A, B, C, D, E>(
   fn5: UnaryFunction<T, B>,
 ): UnaryFunction<T, A>;
 
-export function compose<T>(...fns: UnaryFunction<any, any>[]): UnaryFunction<T, any> {
+export function compose<T>(
+  ...fns: UnaryFunction<any, any>[]
+): UnaryFunction<T, any> {
   if (fns.length === 0) {
     return (arg: T) => arg;
   }
@@ -34,7 +36,11 @@ export function compose<T>(...fns: UnaryFunction<any, any>[]): UnaryFunction<T, 
     return fns[0];
   }
 
-  return fns.reduce((a, b) => (...args) => a(b(...args)));
+  return fns.reduce(
+    (a, b) =>
+      (...args) =>
+        a(b(...args)),
+  );
 }
 
 export function pipe<T>(): UnaryFunction<T, T>;
@@ -62,7 +68,9 @@ export function pipe<T, A, B, C, D, E>(
   fn5: UnaryFunction<D, E>,
 ): UnaryFunction<T, E>;
 
-export function pipe<T>(...fns: UnaryFunction<any, any>[]): UnaryFunction<T, any> {
+export function pipe<T>(
+  ...fns: UnaryFunction<any, any>[]
+): UnaryFunction<T, any> {
   if (fns.length === 0) {
     return (arg: T) => arg;
   }
@@ -71,5 +79,9 @@ export function pipe<T>(...fns: UnaryFunction<any, any>[]): UnaryFunction<T, any
     return fns[0];
   }
 
-  return fns.reduce((a, b) => (...args) => b(a(...args)));
+  return fns.reduce(
+    (a, b) =>
+      (...args) =>
+        b(a(...args)),
+  );
 }
